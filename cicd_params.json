@@ -1,0 +1,11 @@
+{
+  "input_root_dir": "mlops_stack_demo",
+  "input_cloud": "aws",
+  "input_cicd_platform": "github_actions",
+  "input_default_branch": "main",
+  "cloud_specific_node_type_id": "v0.236.0",
+  "input_cli_version": "v0.236.0",
+  "dev_catalog_name": "dev",
+  "prod_catalog_name": "fins_genai",
+  "input_docker_image": "databricksfieldeng/mlopsstacks:latest"
+}
