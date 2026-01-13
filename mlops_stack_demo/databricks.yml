@@ -38,11 +38,9 @@ targets:
       catalog_name: main
     workspace:
       host: https://e2-demo-field-eng.cloud.databricks.com
-      profile: e2_demo_fieldeng
 
   prod:
     variables:
       catalog_name: fins_genai
     workspace:
       host: https://e2-demo-field-eng.cloud.databricks.com
-      profile: e2_demo_fieldeng

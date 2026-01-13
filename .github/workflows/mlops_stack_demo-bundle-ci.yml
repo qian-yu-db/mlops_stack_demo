@@ -14,6 +14,7 @@ defaults:
     working-directory: ./mlops_stack_demo/
 
 env:
+  DATABRICKS_HOST: https://e2-demo-field-eng.cloud.databricks.com
   PROD_WORKSPACE_TOKEN: ${{ secrets.PROD_WORKSPACE_TOKEN }}
 
 jobs:
@@ -29,6 +30,7 @@ jobs:
         id: validate
         env:
           DATABRICKS_TOKEN: ${{ env.PROD_WORKSPACE_TOKEN }}
+          DATABRICKS_HOST: ${{ env.DATABRICKS_HOST }}
         run: |
           databricks bundle validate -t prod > ../validate_output.txt
       - name: Create Comment with Bundle Configuration
