@@ -87,12 +87,46 @@ i.e. for each environment
 
 #### Set secrets for CI/CD
 
-After creating the service principals and adding them to the respective staging and prod workspaces, follow
-[Manage access tokens for a service principal](https://docs.databricks.com/administration-guide/users-groups/service-principals.html#manage-access-tokens-for-a-service-principal)
-to get service principal tokens for staging and prod workspace and follow [Encrypted secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
-to add the secrets to GitHub:
-- `STAGING_WORKSPACE_TOKEN` : service principal token for staging workspace
-- `PROD_WORKSPACE_TOKEN` : service principal token for prod workspace
+After creating the service principals and adding them to the respective staging and prod workspaces, you need to set up authentication secrets in GitHub. There are **two authentication methods** available:
+
+##### Option A: OAuth Authentication (Recommended)
+
+Use OAuth Client ID and Secret from the Databricks Account Console:
+
+1. Go to Account Console → Service Principals → Select your SP
+2. Generate an OAuth secret (Client ID + Client Secret)
+3. Add the following secrets to GitHub (Settings → Secrets → Actions):
+   - `STAGING_CLIENT_ID` : OAuth Client ID for staging workspace
+   - `STAGING_CLIENT_SECRET` : OAuth Client Secret for staging workspace
+   - `PROD_CLIENT_ID` : OAuth Client ID for prod workspace
+   - `PROD_CLIENT_SECRET` : OAuth Client Secret for prod workspace
+
+4. Update your GitHub workflow to use OAuth environment variables:
+   ```yaml
+   env:
+     DATABRICKS_HOST: https://your-workspace.cloud.databricks.com
+     DATABRICKS_CLIENT_ID: ${{ secrets.STAGING_CLIENT_ID }}
+     DATABRICKS_CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+   ```
+
+##### Option B: Personal Access Token (PAT) Authentication
+
+Use PAT tokens generated for the service principal:
+
+1. Follow [Manage access tokens for a service principal](https://docs.databricks.com/administration-guide/users-groups/service-principals.html#manage-access-tokens-for-a-service-principal) to generate tokens
+2. Add the following secrets to GitHub:
+   - `STAGING_WORKSPACE_TOKEN` : service principal PAT for staging workspace
+   - `PROD_WORKSPACE_TOKEN` : service principal PAT for prod workspace
+
+3. Your GitHub workflow should use:
+   ```yaml
+   env:
+     DATABRICKS_HOST: https://your-workspace.cloud.databricks.com
+     DATABRICKS_TOKEN: ${{ secrets.STAGING_WORKSPACE_TOKEN }}
+   ```
+
+##### Additional Secrets
+
 - `WORKFLOW_TOKEN` : [Github token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) with workflow permissions. This secret is needed for the Deploy CI/CD Workflow.
 
 Next, be sure to update the [Workflow Permissions](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token) section under Repo Settings > Actions > General:
