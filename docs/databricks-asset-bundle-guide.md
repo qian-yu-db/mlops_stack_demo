@@ -30,7 +30,7 @@ This is the main entry point for the bundle. It defines:
 - **Bundle metadata**: Name and unique ID
 - **Variables**: Reusable values across all resources
 - **Includes**: References to resource files
-- **Targets**: Deployment environments (dev, prod)
+- **Targets**: Deployment environments (staging, prod)
 
 ```yaml
 bundle:
@@ -55,7 +55,7 @@ include:
   - ./resources/feature-engineering-workflow-resource.yml
 
 targets:
-  dev:
+  staging:
     mode: development
     default: true
     variables:
@@ -78,7 +78,7 @@ DAB supports variable interpolation using `${...}` syntax:
 |----------|-------------|---------------|
 | `${var.catalog_name}` | Catalog from variables | `main` or `fins_genai` |
 | `${var.schema_name}` | Schema from variables | `classic_ml` |
-| `${bundle.target}` | Current deployment target | `dev` or `prod` |
+| `${bundle.target}` | Current deployment target | `staging` or `prod` |
 | `${bundle.name}` | Bundle name | `mlops_stack_demo` |
 | `${workspace.current_user.userName}` | Current user | `user@company.com` |
 | `${bundle.git.origin_url}` | Git repository URL | `https://github.com/...` |
@@ -457,18 +457,18 @@ Jobs can reference other jobs:
 
 ```bash
 # Validate configuration
-databricks bundle validate -t dev
+databricks bundle validate -t staging
 
 # Deploy resources to workspace
-databricks bundle deploy -t dev
+databricks bundle deploy -t staging
 
 # Run a specific job
-databricks bundle run write_feature_table_job -t dev
-databricks bundle run model_training_job -t dev
-databricks bundle run batch_inference_job -t dev
+databricks bundle run write_feature_table_job -t staging
+databricks bundle run model_training_job -t staging
+databricks bundle run batch_inference_job -t staging
 
 # Destroy deployed resources
-databricks bundle destroy -t dev
+databricks bundle destroy -t staging
 ```
 
 ---
@@ -477,7 +477,7 @@ databricks bundle destroy -t dev
 
 | Target | Catalog | Schema | Workspace | Purpose |
 |--------|---------|--------|-----------|---------|
-| `dev` | `main` | `classic_ml` | e2-demo-field-eng | Development & testing |
+| `staging` | `main` | `classic_ml` | e2-demo-field-eng | Development & testing |
 | `prod` | `fins_genai` | `classic_ml` | e2-demo-field-eng | Production |
 
 ### Where is Schema Set?
@@ -502,7 +502,7 @@ To use a different schema, override it in your target configuration:
 
 ```yaml
 targets:
-  dev:
+  staging:
     variables:
       schema_name: my_custom_schema
 ```

@@ -12,9 +12,9 @@ defaults:
 
 env:
   DATABRICKS_HOST: https://e2-demo-field-eng.cloud.databricks.com
-  DATABRICKS_TOKEN: ${{ secrets.DEV_WORKSPACE_TOKEN }}
+  DATABRICKS_TOKEN: ${{ secrets.STAGING_WORKSPACE_TOKEN }}
 
-concurrency: mlops_stack_demo-feature-training-integration-test-dev
+concurrency: mlops_stack_demo-feature-training-integration-test-staging
 
 jobs:
   unit_tests:
@@ -45,19 +45,19 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
       - uses: databricks/setup-cli@v0.236.0
-      - name: Validate Bundle For Dev Deployment Target
+      - name: Validate Bundle For Staging Deployment Target
         id: validate
         run: |
-          databricks bundle validate -t dev
-      - name: Deploy Bundle to Dev Deployment Target
+          databricks bundle validate -t staging
+      - name: Deploy Bundle to Staging Deployment Target
         id: deploy
         run: |
-          databricks bundle deploy -t dev
-      - name: Run Feature Engineering Workflow for Dev Deployment Target
+          databricks bundle deploy -t staging
+      - name: Run Feature Engineering Workflow for Staging Deployment Target
         id: feature_engineering
         run: |
-          databricks bundle run write_feature_table_job -t dev
-      - name: Run Training Workflow for Dev Deployment Target
+          databricks bundle run write_feature_table_job -t staging
+      - name: Run Training Workflow for Staging Deployment Target
         id: training
         run: |
-          databricks bundle run model_training_job -t dev
+          databricks bundle run model_training_job -t staging

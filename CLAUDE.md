@@ -21,13 +21,13 @@ Note: Tests require Java 11+ for local Spark session.
 ### Databricks Bundle Commands
 All bundle commands must be run from the `mlops_stack_demo/` directory:
 ```bash
-databricks bundle validate -t dev     # Validate config
-databricks bundle deploy -t dev       # Deploy resources to dev workspace
-databricks bundle run <job_name> -t dev  # Run a specific job
-databricks bundle destroy -t dev      # Remove deployed resources
+databricks bundle validate -t staging     # Validate config
+databricks bundle deploy -t staging       # Deploy resources to dev workspace
+databricks bundle run <job_name> -t staging  # Run a specific job
+databricks bundle destroy -t staging      # Remove deployed resources
 ```
 
-Deployment targets: `dev`, `prod`
+Deployment targets: `staging`, `prod`
 
 ## Architecture
 
@@ -46,7 +46,7 @@ Deployment targets: `dev`, `prod`
 ### Environment-Target Mapping
 | Target | Catalog | Purpose |
 |--------|---------|---------|
-| dev | dev | Local development & CI integration tests |
+| staging | main | Development & CI integration tests |
 | prod | fins_genai | Production (auto-deployed from main branch) |
 
 ### Feature Modules
@@ -54,5 +54,5 @@ Feature computation logic lives in `feature_engineering/features/`. Each module 
 
 ## CI/CD
 
-- PRs trigger unit tests + integration tests against dev workspace
+- PRs trigger unit tests + integration tests against staging workspace
 - Merge to main deploys to prod workspace

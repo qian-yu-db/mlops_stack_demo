@@ -9,7 +9,7 @@ pipeline {
     parameters {
         choice(
             name: 'DEPLOY_TARGET',
-            choices: ['dev', 'prod'],
+            choices: ['staging', 'prod'],
             description: 'Deployment target'
         )
         booleanParam(
