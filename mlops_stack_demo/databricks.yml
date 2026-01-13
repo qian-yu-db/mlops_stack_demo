@@ -31,7 +31,7 @@ include:
 
 # Deployment Target specific values for workspace
 targets:
-  dev:  # UC Catalog Name
+  staging:
     mode: development
     default: true
     variables:

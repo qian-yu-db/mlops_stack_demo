@@ -87,13 +87,83 @@ i.e. for each environment
 
 #### Set secrets for CI/CD
 
-After creating the service principals and adding them to the respective staging and prod workspaces, follow
-[Manage access tokens for a service principal](https://docs.databricks.com/administration-guide/users-groups/service-principals.html#manage-access-tokens-for-a-service-principal)
-to get service principal tokens for staging and prod workspace and follow [Encrypted secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
-to add the secrets to GitHub:
-- `STAGING_WORKSPACE_TOKEN` : service principal token for staging workspace
-- `PROD_WORKSPACE_TOKEN` : service principal token for prod workspace
-- `WORKFLOW_TOKEN` : [Github token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) with workflow permissions. This secret is needed for the Deploy CI/CD Workflow.
+After creating the service principals and adding them to the respective staging and prod workspaces, you need to generate access tokens and store them as GitHub secrets.
+
+##### Step 1: Generate OAuth Secret for the Service Principal
+
+1. Go to Databricks Account Console → Service Principals → Select your SP
+2. Open the **Secrets** tab
+3. Under **OAuth secrets**, click "Generate secret"
+4. Set the secret's lifetime (up to 2 years)
+5. **Copy the displayed Client ID and Secret** - the secret is shown only once!
+
+##### Step 2: Generate Access Token Using OAuth
+
+Use the service principal's Client ID and OAuth Secret to request an access token:
+
+1. Construct the token endpoint URL for your workspace:
+   ```
+   https://<databricks-instance>/oidc/v1/token
+   ```
+
+   For example: `https://e2-demo-field-eng.cloud.databricks.com/oidc/v1/token`
+
+2. Use `curl` to obtain the access token:
+   ```bash
+   curl --request POST \
+     --url "https://<databricks-instance>/oidc/v1/token" \
+     --header "Content-Type: application/x-www-form-urlencoded" \
+     --data "client_id=<service-principal-client-id>" \
+     --data "client_secret=<service-principal-secret>" \
+     --data "grant_type=client_credentials" \
+     --data "scope=all-apis"
+   ```
+
+3. Copy the `access_token` from the JSON response.
+
+##### Step 3: Store Access Tokens as GitHub Secrets
+
+In your GitHub repository, go to **Settings** → **Secrets and variables** → **Actions** and add:
+
+* `STAGING_WORKSPACE_TOKEN` : Access token for staging workspace service principal
+* `PROD_WORKSPACE_TOKEN` : Access token for prod workspace service principal
+
+##### Step 4: Reference Tokens in GitHub Actions
+
+Your workflow will use these environment variables:
+```yaml
+env:
+  DATABRICKS_HOST: https://your-workspace.cloud.databricks.com
+  DATABRICKS_TOKEN: ${{ secrets.STAGING_WORKSPACE_TOKEN }}
+```
+
+##### Alternative: Workload Identity Federation (OIDC)
+
+For stronger security without managing static secrets, you can configure Databricks to accept OIDC federated tokens directly from GitHub Actions:
+
+1. Set up a federation policy linking your Databricks service principal to your GitHub repository
+2. Configure your workflow:
+   ```yaml
+   permissions:
+     id-token: write
+     contents: read
+   env:
+     DATABRICKS_AUTH_TYPE: github-oidc
+     DATABRICKS_HOST: <your-databricks-workspace-url>
+     DATABRICKS_CLIENT_ID: <service-principal-client-id>
+   ```
+
+This removes the need to manually manage and rotate secrets.
+
+##### Additional Secrets
+
+* `WORKFLOW_TOKEN` : [Github token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) with workflow permissions. This secret is needed for the Deploy CI/CD Workflow.
+
+##### Best Practices
+
+* **Never** store access tokens in code or plaintext—always use GitHub Actions secrets
+* Rotate tokens regularly and monitor expiry
+* Use dedicated service principals and separate tokens per environment (staging, prod)
 
 Next, be sure to update the [Workflow Permissions](https://docs.github.com/en/actions/security-guides/automatic-token-authentication#modifying-the-permissions-for-the-github_token) section under Repo Settings > Actions > General:
 - Allow `Read and write permissions`,
