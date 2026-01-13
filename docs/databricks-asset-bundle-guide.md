@@ -44,6 +44,9 @@ variables:
     default: mlops_stack_demo-model
   catalog_name:
     description: The catalog name to save the trained model
+  schema_name:
+    description: The schema name for ML artifacts and tables.
+    default: classic_ml
 
 include:
   - ./resources/batch-inference-workflow-resource.yml
@@ -74,6 +77,7 @@ DAB supports variable interpolation using `${...}` syntax:
 | Variable | Description | Example Value |
 |----------|-------------|---------------|
 | `${var.catalog_name}` | Catalog from variables | `main` or `fins_genai` |
+| `${var.schema_name}` | Schema from variables | `classic_ml` |
 | `${bundle.target}` | Current deployment target | `dev` or `prod` |
 | `${bundle.name}` | Bundle name | `mlops_stack_demo` |
 | `${workspace.current_user.userName}` | Current user | `user@company.com` |
@@ -92,7 +96,7 @@ resources:
     model:
       name: ${var.model_name}
       catalog_name: ${var.catalog_name}
-      schema_name: classic_ml
+      schema_name: ${var.schema_name}
       grants:
         - privileges: [EXECUTE]
           principal: account users
@@ -128,13 +132,13 @@ resources:
           notebook_task:
             notebook_path: ../feature_engineering/notebooks/GenerateAndWriteFeatures.py
             base_parameters:
-              output_table_name: ${var.catalog_name}.classic_ml.trip_pickup_features
+              output_table_name: ${var.catalog_name}.${var.schema_name}.trip_pickup_features
               features_transform_module: pickup_features
         - task_key: DropoffFeatures
           notebook_task:
             notebook_path: ../feature_engineering/notebooks/GenerateAndWriteFeatures.py
             base_parameters:
-              output_table_name: ${var.catalog_name}.classic_ml.trip_dropoff_features
+              output_table_name: ${var.catalog_name}.${var.schema_name}.trip_dropoff_features
               features_transform_module: dropoff_features
       schedule:
         quartz_cron_expression: "0 0 7 * * ?"  # Daily at 7am UTC
@@ -190,9 +194,9 @@ resources:
           notebook_task:
             notebook_path: ../deployment/batch_inference/notebooks/BatchInference.py
             base_parameters:
-              input_table_name: ${bundle.target}.classic_ml.feature_store_inference_input
-              output_table_name: ${var.catalog_name}.classic_ml.predictions
-              model_name: ${var.catalog_name}.classic_ml.${var.model_name}
+              input_table_name: ${bundle.target}.${var.schema_name}.feature_store_inference_input
+              output_table_name: ${var.catalog_name}.${var.schema_name}.predictions
+              model_name: ${var.catalog_name}.${var.schema_name}.${var.model_name}
       schedule:
         quartz_cron_expression: "0 0 11 * * ?"  # Daily at 11am UTC
 ```
@@ -478,21 +482,30 @@ databricks bundle destroy -t dev
 
 ### Where is Schema Set?
 
-The schema (`classic_ml`) is defined in **`ml-artifacts-resource.yml`**:
+The schema is defined as a **variable** in `databricks.yml`:
 
 ```yaml
-resources:
-  registered_models:
-    model:
-      name: ${var.model_name}
-      catalog_name: ${var.catalog_name}
-      schema_name: classic_ml        # <-- Schema is hardcoded here
+variables:
+  schema_name:
+    description: The schema name for ML artifacts and tables.
+    default: classic_ml
 ```
 
-The schema is also referenced in the workflow resource files for table names:
-- `${var.catalog_name}.classic_ml.trip_pickup_features`
-- `${var.catalog_name}.classic_ml.trip_dropoff_features`
-- `${var.catalog_name}.classic_ml.predictions`
+It is then used throughout the resource files:
+
+- `${var.catalog_name}.${var.schema_name}.trip_pickup_features`
+- `${var.catalog_name}.${var.schema_name}.trip_dropoff_features`
+- `${var.catalog_name}.${var.schema_name}.predictions`
+- `${var.catalog_name}.${var.schema_name}.${var.model_name}`
+
+To use a different schema, override it in your target configuration:
+
+```yaml
+targets:
+  dev:
+    variables:
+      schema_name: my_custom_schema
+```
 
 ---
 
