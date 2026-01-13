@@ -56,9 +56,9 @@ targets:
     mode: development
     default: true
     variables:
-      catalog_name: dev
+      catalog_name: main
     workspace:
-      host: <dev-workspace-url>
+      host: https://e2-demo-field-eng.cloud.databricks.com
 
   prod:
     variables:
@@ -73,7 +73,7 @@ DAB supports variable interpolation using `${...}` syntax:
 
 | Variable | Description | Example Value |
 |----------|-------------|---------------|
-| `${var.catalog_name}` | Catalog from variables | `dev` or `fins_genai` |
+| `${var.catalog_name}` | Catalog from variables | `main` or `fins_genai` |
 | `${bundle.target}` | Current deployment target | `dev` or `prod` |
 | `${bundle.name}` | Bundle name | `mlops_stack_demo` |
 | `${workspace.current_user.userName}` | Current user | `user@company.com` |
@@ -471,10 +471,28 @@ databricks bundle destroy -t dev
 
 ## Environment Mapping
 
-| Target | Catalog | Workspace | Purpose |
-|--------|---------|-----------|---------|
-| `dev` | `dev` | Dev workspace | Development & testing |
-| `prod` | `fins_genai` | Prod workspace | Production |
+| Target | Catalog | Schema | Workspace | Purpose |
+|--------|---------|--------|-----------|---------|
+| `dev` | `main` | `classic_ml` | e2-demo-field-eng | Development & testing |
+| `prod` | `fins_genai` | `classic_ml` | e2-demo-field-eng | Production |
+
+### Where is Schema Set?
+
+The schema (`classic_ml`) is defined in **`ml-artifacts-resource.yml`**:
+
+```yaml
+resources:
+  registered_models:
+    model:
+      name: ${var.model_name}
+      catalog_name: ${var.catalog_name}
+      schema_name: classic_ml        # <-- Schema is hardcoded here
+```
+
+The schema is also referenced in the workflow resource files for table names:
+- `${var.catalog_name}.classic_ml.trip_pickup_features`
+- `${var.catalog_name}.classic_ml.trip_dropoff_features`
+- `${var.catalog_name}.classic_ml.predictions`
 
 ---
 
