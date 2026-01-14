@@ -1,6 +1,11 @@
 # This GitHub workflow validates Bundle config (ML resource config and more)
 # defined under mlops_stack_demo/resources/*
 # and mlops_stack_demo/databricks.yml, when PRs are opened
+#
+# Authentication: Uses OIDC Workload Identity Federation (no static tokens)
+# Prerequisites: Create federation policy for your service principal
+# See: https://docs.databricks.com/aws/en/dev-tools/auth/provider-github
+
 name: Bundle validation for mlops_stack_demo
 
 on:
@@ -9,14 +14,18 @@ on:
     paths:
       - 'mlops_stack_demo/**'
 
+# Required for OIDC token exchange
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
 defaults:
   run:
     working-directory: ./mlops_stack_demo/
 
 env:
   DATABRICKS_HOST: https://e2-demo-field-eng.cloud.databricks.com
-  STAGING_WORKSPACE_TOKEN: ${{ secrets.STAGING_WORKSPACE_TOKEN }}
-  PROD_WORKSPACE_TOKEN: ${{ secrets.PROD_WORKSPACE_TOKEN }}
 
 jobs:
   staging:
@@ -30,10 +39,13 @@ jobs:
       - name: Validate Bundle For Staging
         id: validate
         env:
-          DATABRICKS_TOKEN: ${{ env.STAGING_WORKSPACE_TOKEN }}
+          # OIDC authentication - no static token needed
+          DATABRICKS_AUTH_TYPE: github-oidc
+          DATABRICKS_CLIENT_ID: ${{ vars.STAGING_SP_CLIENT_ID }}
         run: |
           databricks bundle validate -t staging 2>&1 | tee ../validate_staging_output.txt
       - name: Create Comment with Bundle Configuration
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         id: comment
         with:
@@ -68,10 +80,13 @@ jobs:
       - name: Validate Bundle For Prod
         id: validate
         env:
-          DATABRICKS_TOKEN: ${{ env.PROD_WORKSPACE_TOKEN }}
+          # OIDC authentication - no static token needed
+          DATABRICKS_AUTH_TYPE: github-oidc
+          DATABRICKS_CLIENT_ID: ${{ vars.PROD_SP_CLIENT_ID }}
         run: |
           databricks bundle validate -t prod 2>&1 | tee ../validate_prod_output.txt
       - name: Create Comment with Bundle Configuration
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         id: comment
         with:
