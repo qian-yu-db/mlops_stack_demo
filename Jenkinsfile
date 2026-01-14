@@ -4,13 +4,15 @@ pipeline {
     environment {
         DATABRICKS_CLI_VERSION = '0.236.0'
         PYTHON_VERSION = '3.10'
+        // Workspace URL - same for both staging and prod in this setup
+        DATABRICKS_HOST = 'https://e2-demo-field-eng.cloud.databricks.com'
     }
 
     parameters {
         choice(
             name: 'DEPLOY_TARGET',
             choices: ['staging', 'prod'],
-            description: 'Deployment target'
+            description: 'Deployment target environment'
         )
         booleanParam(
             name: 'RUN_INTEGRATION_TESTS',
@@ -26,11 +28,12 @@ pipeline {
             }
         }
 
-        stage('Setup') {
+        stage('Setup Environment') {
             steps {
                 sh '''
                     # Install Databricks CLI
                     curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+                    databricks --version
 
                     # Install Python dependencies
                     cd mlops_stack_demo
@@ -43,20 +46,41 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 dir('mlops_stack_demo') {
-                    sh 'pytest tests/'
+                    sh 'pytest tests/ -v'
                 }
             }
         }
 
         stage('Validate Bundle') {
+            environment {
+                // Service Principal OAuth credentials from Jenkins credentials store
+                DATABRICKS_CLIENT_ID = credentials("${params.DEPLOY_TARGET}-databricks-client-id")
+                DATABRICKS_CLIENT_SECRET = credentials("${params.DEPLOY_TARGET}-databricks-client-secret")
+            }
             steps {
-                withCredentials([
-                    string(credentialsId: "${params.DEPLOY_TARGET}-databricks-client-id", variable: 'DATABRICKS_CLIENT_ID'),
-                    string(credentialsId: "${params.DEPLOY_TARGET}-databricks-client-secret", variable: 'DATABRICKS_CLIENT_SECRET')
-                ]) {
-                    dir('mlops_stack_demo') {
-                        sh "databricks bundle validate -t ${params.DEPLOY_TARGET}"
+                dir('mlops_stack_demo') {
+                    sh "databricks bundle validate -t ${params.DEPLOY_TARGET}"
+                }
+            }
+        }
+
+        stage('Deploy Bundle') {
+            when {
+                anyOf {
+                    expression { params.RUN_INTEGRATION_TESTS == true }
+                    allOf {
+                        branch 'main'
+                        expression { params.DEPLOY_TARGET == 'prod' }
                     }
+                }
+            }
+            environment {
+                DATABRICKS_CLIENT_ID = credentials("${params.DEPLOY_TARGET}-databricks-client-id")
+                DATABRICKS_CLIENT_SECRET = credentials("${params.DEPLOY_TARGET}-databricks-client-secret")
+            }
+            steps {
+                dir('mlops_stack_demo') {
+                    sh "databricks bundle deploy -t ${params.DEPLOY_TARGET}"
                 }
             }
         }
@@ -65,37 +89,19 @@ pipeline {
             when {
                 expression { params.RUN_INTEGRATION_TESTS == true }
             }
-            steps {
-                withCredentials([
-                    string(credentialsId: "${params.DEPLOY_TARGET}-databricks-client-id", variable: 'DATABRICKS_CLIENT_ID'),
-                    string(credentialsId: "${params.DEPLOY_TARGET}-databricks-client-secret", variable: 'DATABRICKS_CLIENT_SECRET')
-                ]) {
-                    dir('mlops_stack_demo') {
-                        sh """
-                            databricks bundle deploy -t ${params.DEPLOY_TARGET}
-                            databricks bundle run write_feature_table_job -t ${params.DEPLOY_TARGET}
-                            databricks bundle run model_training_job -t ${params.DEPLOY_TARGET}
-                        """
-                    }
-                }
+            environment {
+                DATABRICKS_CLIENT_ID = credentials("${params.DEPLOY_TARGET}-databricks-client-id")
+                DATABRICKS_CLIENT_SECRET = credentials("${params.DEPLOY_TARGET}-databricks-client-secret")
             }
-        }
+            steps {
+                dir('mlops_stack_demo') {
+                    sh """
+                        echo "Running feature engineering job..."
+                        databricks bundle run write_feature_table_job -t ${params.DEPLOY_TARGET}
 
-        stage('Deploy') {
-            when {
-                allOf {
-                    branch 'main'
-                    expression { params.DEPLOY_TARGET == 'prod' }
-                }
-            }
-            steps {
-                withCredentials([
-                    string(credentialsId: 'prod-databricks-client-id', variable: 'DATABRICKS_CLIENT_ID'),
-                    string(credentialsId: 'prod-databricks-client-secret', variable: 'DATABRICKS_CLIENT_SECRET')
-                ]) {
-                    dir('mlops_stack_demo') {
-                        sh 'databricks bundle deploy -t prod'
-                    }
+                        echo "Running model training job..."
+                        databricks bundle run model_training_job -t ${params.DEPLOY_TARGET}
+                    """
                 }
             }
         }
@@ -109,7 +115,7 @@ pipeline {
             echo 'Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline failed!'
+            echo 'Pipeline failed. Check the logs for details.'
         }
     }
 }
